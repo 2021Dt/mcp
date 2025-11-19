@@ -4,6 +4,10 @@ from mcp_app import mcp
 
 
 @mcp.tool()
-def jp_chat_turn(user_text: str) -> dict:
-    """占位聊天工具，简单回显用户输入。"""
-    return {"echo": user_text}
+async def jp_chat_turn(user_text: str, history: list[dict] | None = None) -> dict:
+    """调用异步核心引擎处理单轮对话。"""
+
+    from core.conversation_engine import process_user_utterance
+
+    result = await process_user_utterance(user_text, history)
+    return result

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List, Optional, TypedDict
 
+from core.llm_client import call_llm
+
 
 class GrammarPoint(TypedDict):
     """表示 AI 回复中涉及的语法点结构。"""
@@ -30,8 +32,10 @@ class TurnResult(TypedDict):
     grammar_ai: List[GrammarPoint]
 
 
-def process_user_utterance(user_text: str, history: Optional[list[dict]] = None) -> TurnResult:
-    """完成一次用户输入到 AI 输出的对话轮次。
+async def process_user_utterance(
+    user_text: str, history: Optional[list[dict]] = None
+) -> TurnResult:
+    """完成一次用户输入到 AI 输出的对话轮次（异步版本）。
 
     参数：
         user_text: 用户输入的原始日语句子。
@@ -44,10 +48,10 @@ def process_user_utterance(user_text: str, history: Optional[list[dict]] = None)
     检索逻辑。该函数作为对外统一入口，保持签名稳定以便调用方集成。
     """
 
-    correction = _analyze_user_sentence(user_text)
-    ai_reply = _generate_ai_reply(user_text, history)
-    grammar_points = _extract_grammar_points(ai_reply)
-    zh_translation = _translate_to_zh(ai_reply)
+    correction = await _analyze_user_sentence(user_text)
+    ai_reply = await _generate_ai_reply(user_text, history)
+    grammar_points = await _extract_grammar_points(ai_reply)
+    zh_translation = await _translate_to_zh(ai_reply)
 
     return TurnResult(
         jp=ai_reply,
@@ -57,42 +61,54 @@ def process_user_utterance(user_text: str, history: Optional[list[dict]] = None)
     )
 
 
-def _analyze_user_sentence(user_text: str) -> Optional[UserCorrection]:
-    """针对用户句子执行语法与表达分析的占位实现。
+async def _analyze_user_sentence(user_text: str) -> Optional[UserCorrection]:
+    """调用 LLM 生成纠错意见，并包装为 `UserCorrection`。"""
 
-    后续版本可接入语法纠错模型或规则库，并返回 `UserCorrection` 结构，包括
-    原文、建议修改以及中文说明。当前返回 `None`，表示不执行任何纠错逻辑。
-    """
+    messages = [
+        {
+            "role": "system",
+            "content": "你是一名日语老师，请给出纠错建议并解释原因。",
+        },
+        {
+            "role": "user",
+            "content": f"请帮我纠正以下日文句子并解释：{user_text}",
+        },
+    ]
+    suggestion = await call_llm(messages)
+    stripped = suggestion.strip()
+    if not stripped:
+        return None
+    return UserCorrection(original=user_text, corrected=user_text, explain=stripped)
 
-    return None
+
+async def _generate_ai_reply(user_text: str, history: Optional[list[dict]]) -> str:
+    """构造 OpenAI 风格消息并调用统一 LLM 生成日文回复。"""
+
+    system_prompt = "你是一名温柔的日语会话老师，请使用自然日语并在合适处加入注音。"
+    messages: list[dict] = [{"role": "system", "content": system_prompt}]
+    if history:
+        for turn in history:
+            role = turn.get("role", "user")
+            content = turn.get("content", "")
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_text})
+    reply = await call_llm(messages)
+    return reply.strip() or "TODO: 生成 AI 回复"
 
 
-def _generate_ai_reply(user_text: str, history: Optional[list[dict]]) -> str:
-    """根据用户输入与历史上下文生成 AI 回复的占位实现。
+async def _extract_grammar_points(ai_reply: str) -> List[GrammarPoint]:
+    """语法点提取仍保持占位，暂不调用模型。"""
 
-    未来将整合大语言模型、提示模板与用户画像，在回复中加入假名注音及学习
-    建议。为了便于单元测试，此函数仅接收必要参数并返回固定字符串，调用者
-    无需关心具体生成方式。
-    """
-
-    return "TODO: 生成 AI 回复"
-
-
-def _extract_grammar_points(ai_reply: str) -> List[GrammarPoint]:
-    """从 AI 回复中提取语法点的占位实现。
-
-    将来可解析模型输出或通过额外的语法分析工具提取多条语法解释，每条包含
-    名称、说明和示例。当前返回空列表，表示暂未提取任何语法点。
-    """
-
+    _ = ai_reply
     return []
 
 
-def _translate_to_zh(jp_text: str) -> str:
-    """将日文回复翻译为中文的占位实现。
+async def _translate_to_zh(jp_text: str) -> str:
+    """使用 LLM 进行简单的日文到中文翻译。"""
 
-    未来可以调用翻译模型、词典或模板，使 AI 回复能够被中文用户理解。目前
-    直接返回固定字符串以避免依赖外部服务。
-    """
-
-    return "TODO: 中文翻译"
+    messages = [
+        {"role": "system", "content": "你是专业的日文翻译，请输出中文释义。"},
+        {"role": "user", "content": f"请把下面的日文翻成中文：{jp_text}"},
+    ]
+    translation = await call_llm(messages)
+    return translation.strip() or "TODO: 中文翻译"
