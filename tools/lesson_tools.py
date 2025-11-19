@@ -1,6 +1,9 @@
 """课程工具占位模块。"""
 
+from mcp_app import mcp
 
-def register_lesson_tools() -> None:
-    """注册课程工具的占位函数。"""
-    pass
+
+@mcp.tool()
+def lesson_overview(lesson_id: str) -> dict:
+    """占位课程工具，返回请求的课程标识。"""
+    return {"lesson_id": lesson_id, "status": "占位"}

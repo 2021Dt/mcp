@@ -1,6 +1,9 @@
 """场景工具占位模块。"""
 
+from mcp_app import mcp
 
-def register_scenario_tools() -> None:
-    """注册场景工具的占位函数。"""
-    pass
+
+@mcp.tool()
+def scenario_step(scenario_id: str, step: int = 1) -> dict:
+    """占位场景工具，返回场景与步骤信息。"""
+    return {"scenario_id": scenario_id, "step": step, "status": "占位"}
