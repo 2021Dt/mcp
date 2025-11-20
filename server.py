@@ -6,6 +6,7 @@ from mcp_app import mcp
 import tools.japanese_chat_tools  # noqa: F401
 import tools.lesson_tools  # noqa: F401
 import tools.scenario_tools  # noqa: F401
+import tools.ollama_tools  # noqa: F401
 
 
 def main() -> None:
