@@ -6,6 +6,12 @@ from typing import List, Optional, TypedDict
 
 from core.llm_client import call_llm
 from core.grammar_engine import detect_grammar
+from core.user_state import (
+    apply_level_update,
+    load_user_state,
+    save_user_state,
+    update_state_with_turn,
+)
 
 
 class GrammarPoint(TypedDict):
@@ -31,10 +37,13 @@ class TurnResult(TypedDict):
     zh: str
     user_correction: Optional[UserCorrection]
     grammar_ai: List[GrammarPoint]
+    level: Optional[str]
 
 
 async def process_user_utterance(
-    user_text: str, history: Optional[list[dict]] = None
+    user_text: str,
+    history: Optional[list[dict]] = None,
+    user_id: str | None = None,
 ) -> TurnResult:
     """完成一次用户输入到 AI 输出的对话轮次（异步版本）。"""
 
@@ -42,13 +51,22 @@ async def process_user_utterance(
     ai_reply = await _generate_ai_reply(user_text, history)
     grammar_points = await _extract_grammar_points(ai_reply)
     zh_translation = await _translate_to_zh(ai_reply)
-
-    return TurnResult(
+    turn_result: TurnResult = TurnResult(
         jp=ai_reply,
         zh=zh_translation,
         user_correction=correction,
         grammar_ai=grammar_points,
+        level=None,
     )
+
+    if user_id:
+        state = load_user_state(user_id)
+        state = update_state_with_turn(state, turn_result)
+        state = apply_level_update(state)
+        save_user_state(state)
+        turn_result["level"] = state.get("level")
+
+    return turn_result
 
 
 async def _analyze_user_sentence(user_text: str) -> Optional[UserCorrection]:
