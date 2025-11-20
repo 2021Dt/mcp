@@ -7,6 +7,8 @@ import tools.japanese_chat_tools  # noqa: F401
 import tools.lesson_tools  # noqa: F401
 import tools.scenario_tools  # noqa: F401
 import tools.ollama_tools  # noqa: F401
+import tools.grammar_tools  # noqa: F401
+import tools.user_state_tools  # noqa: F401
 
 
 def main() -> None:
