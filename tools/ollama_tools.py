@@ -1,29 +1,16 @@
-"""Ollama 相关的 MCP 工具实现。"""
-
 from __future__ import annotations
 
-import logging
-from typing import Any
-
-import ollama
+from typing import Any, List, Optional
 
 from mcp_app import mcp
-
-logger = logging.getLogger(__name__)
+from core.services.ai_client import AIClient
 
 
 @mcp.tool()
-async def ollama_chat(model: str, messages: list[dict[str, Any]]) -> str:
-    """调用 Ollama 的非流式接口并返回文本结果。"""
+async def ollama_chat(
+    model: str, messages: List[dict[str, Any]], tools: Optional[List[dict]] = None
+) -> dict:
+    """调用统一 AI 客户端的 Ollama 模式。"""
 
-    if not model:
-        raise ValueError("model 参数不能为空")
-    if not messages:
-        raise ValueError("messages 参数不能为空")
-
-    response = await ollama.chat(model=model, messages=messages)
-    content = response.get("message", {}).get("content", "")
-    if not content:
-        logger.warning("Ollama 未返回内容: %s", response)
-        raise RuntimeError("Ollama 返回内容为空")
-    return content
+    client = AIClient(mode="ollama", model=model)
+    return await client.chat(messages, tools=tools)

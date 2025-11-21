@@ -1,7 +1,7 @@
 """提供日语语法识别相关的 MCP 工具。"""
 
 from mcp_app import mcp
-from core.grammar_engine import detect_grammar
+from core.engines.grammar_engine import detect_grammar
 
 
 @mcp.tool()
