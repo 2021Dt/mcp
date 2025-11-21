@@ -4,15 +4,28 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from core.llm_client import call_llm
-from core.grammar_engine import detect_grammar
 from core.models import GrammarPoint, TurnResult, UserCorrection
-from core.user_state import (
+from core.services.ai_client import AIClient
+from core.utils.dp_log import LogFactory
+from core.engines.grammar_engine import detect_grammar
+from core.engines.user_state_engine import (
     apply_level_update,
     load_user_state,
     save_user_state,
     update_state_with_turn,
 )
+
+logger = LogFactory.get_logger(__name__)
+ai_client = AIClient()
+
+
+async def _call_ai(messages: list[dict]) -> str:
+    """调用统一 AI 客户端并提取文本内容。"""
+
+    result = await ai_client.chat(messages)
+    message = result.get("message", {})
+    content = message.get("content", "")
+    return content.strip()
 
 
 async def process_user_utterance(
@@ -22,6 +35,7 @@ async def process_user_utterance(
 ) -> TurnResult:
     """完成一次用户输入到 AI 输出的对话轮次（异步版本）。"""
 
+    logger.info("processing user utterance")
     correction = await _analyze_user_sentence(user_text)
     ai_reply = await _generate_ai_reply(user_text, history)
     grammar_points = await _extract_grammar_points(ai_reply)
@@ -57,7 +71,7 @@ async def _analyze_user_sentence(user_text: str) -> Optional[UserCorrection]:
             "content": f"请纠正这个日语句子并解释错误：{user_text}",
         },
     ]
-    suggestion = await call_llm(messages)
+    suggestion = await _call_ai(messages)
     stripped = suggestion.strip()
     if not stripped:
         return None
@@ -100,7 +114,7 @@ async def _generate_ai_reply(user_text: str, history: Optional[list[dict]]) -> s
             "content": f"你是一个日语对话伙伴，请用自然日语回复：{user_text}",
         }
     )
-    reply = await call_llm(messages)
+    reply = await _call_ai(messages)
     return reply.strip() or "すみません、もう一度お願いします。"
 
 
@@ -117,5 +131,5 @@ async def _translate_to_zh(jp_text: str) -> str:
         {"role": "system", "content": "你是一名专业的中日互译译者。"},
         {"role": "user", "content": f"请把以下日语翻译成中文：{jp_text}"},
     ]
-    translation = await call_llm(messages)
+    translation = await _call_ai(messages)
     return translation.strip() or jp_text
