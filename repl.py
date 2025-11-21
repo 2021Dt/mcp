@@ -8,6 +8,8 @@ from typing import Any, Dict, List
 
 from fastmcp import Client
 
+from core.services.agent_runner import AgentRunner
+from core.services.ai_client import AIClient
 from mcp_app import mcp
 
 # ⚠️ 必须导入所有工具模块以触发 @mcp.tool 注册
@@ -18,15 +20,16 @@ import tools.user_state_tools  # noqa: F401
 import tools.grammar_tools  # noqa: F401
 import tools.ollama_tools  # noqa: F401
 
-
-client = Client(mcp)
+mcp_client = Client(mcp)
+ai_client = AIClient()
+agent_runner = AgentRunner(ai_client, mcp_client)
 
 
 async def call_tool(name: str, args: Dict[str, Any]) -> Any:
     """以异步方式调用 MCP 工具，使用进程内 FastMCP 客户端。"""
 
-    async with client:
-        return await client.call_tool(name, args)
+    async with mcp_client:
+        return await mcp_client.call_tool(name, args)
 
 
 def call_tool_sync(name: str, args: Dict[str, Any]) -> Any:
@@ -72,7 +75,7 @@ def print_help() -> None:
     print("  /lesson-step <lesson_id> <i>   查看课程某一步")
     print("  /scenario <scene_id> <i>       查看场景某一步台词")
     print("  /scenario-reply <scene_id> <i> <日文回复>  回应场景并查看分析")
-    print("  普通文本                       进入自由对话模式")
+    print("  普通文本                       进入自由对话模式（AgentRunner 驱动）")
 
 
 def format_grammar_stats(grammar_stats: Dict[str, Dict[str, int]]) -> str:
@@ -236,47 +239,17 @@ def handle_command(line: str, session: Session) -> bool:
     return True
 
 
-def handle_free_talk(text: str, session: Session) -> None:
-    """处理自由对话输入，调用 jp_chat_turn 并格式化输出。"""
+def handle_free_talk(text: str) -> None:
+    """处理自由对话输入，通过 AgentRunner 调度 AI 与工具。"""
 
     try:
-        result: Dict[str, Any] = call_tool_sync(
-            "jp_chat_turn",
-            {
-                "user_text": text,
-                "history": None,
-                "user_id": session.current_user_id,
-            },
-        )
+        result = asyncio.run(agent_runner.run(text))
     except Exception as exc:  # noqa: BLE001
-        print(f"[错误] 调用工具 jp_chat_turn 失败：{exc}")
+        print(f"[错误] 调用 AgentRunner 失败：{exc}")
         return
 
-    jp = result.get("jp", "")
-    zh = result.get("zh", "")
-    correction = result.get("user_correction")
-    grammar_list = result.get("grammar_ai") or []
-    level = result.get("level")
-
-    print("\n[AI 日语]")
-    print(jp)
-    print("\n[中文]")
-    print(zh)
-
-    if correction:
-        print("\n[纠错]")
-        print(f"原句: {correction.get('original')}")
-        print(f"修改: {correction.get('corrected')}")
-        print(f"说明: {correction.get('explain')}")
-
-    if grammar_list:
-        print("\n[语法]")
-        for g in grammar_list:
-            print(f"- {g.get('name')}: {g.get('description')}")
-
-    if level:
-        print("\n[当前等级]")
-        print(level)
+    print("\n[AgentRunner]")
+    print(result)
 
 
 def main() -> None:
@@ -299,7 +272,7 @@ def main() -> None:
             if not handle_command(line, session):
                 break
         else:
-            handle_free_talk(line, session)
+            handle_free_talk(line)
 
 
 if __name__ == "__main__":

@@ -3,72 +3,56 @@
 from __future__ import annotations
 
 from pathlib import Path
-import json
 from typing import Dict
 
 from core.models import GrammarStats, TurnResult, UserState
+from core.utils.dp_log import LogFactory
+from core.utils.helpers import dump_json, load_json
 
-
-# --- 配置 ---
+logger = LogFactory.get_logger(__name__)
 
 DEFAULT_LEVEL = "N5"
-
-
-# --- 路径工具 ---
-
-
-def _get_state_dir() -> Path:
-    """返回存放用户状态 JSON 的目录路径，若不存在则自动创建。"""
-
-    state_dir = Path("data") / "user_state"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    return state_dir
+_STATE_DIR = Path("data") / "user_state"
 
 
 def _get_state_path(user_id: str) -> Path:
     """返回某个用户对应的 JSON 状态文件路径。"""
 
-    return _get_state_dir() / f"{user_id}.json"
-
-
-# --- 核心 API ---
+    return _STATE_DIR / f"{user_id}.json"
 
 
 def load_user_state(user_id: str) -> UserState:
     """加载用户状态；若文件不存在则返回默认状态。"""
 
     path = _get_state_path(user_id)
-    if not path.exists():
-        return UserState(
-            user_id=user_id,
-            level=DEFAULT_LEVEL,
-            grammar_stats={},
-        )
-
-    with path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    level = data.get("level", DEFAULT_LEVEL)
-    grammar_stats = data.get("grammar_stats", {})
-
-    return UserState(user_id=user_id, level=level, grammar_stats=grammar_stats)
+    data = load_json(
+        path,
+        {
+            "user_id": user_id,
+            "level": DEFAULT_LEVEL,
+            "grammar_stats": {},
+        },
+    )
+    logger.debug(f"load_user_state for {user_id}")
+    return UserState(
+        user_id=data.get("user_id", user_id),
+        level=data.get("level", DEFAULT_LEVEL),
+        grammar_stats=data.get("grammar_stats", {}),
+    )
 
 
 def save_user_state(state: UserState) -> None:
     """将用户状态保存为 JSON 文件。"""
 
     path = _get_state_path(state["user_id"])
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
-
-
-# --- 状态更新逻辑 ---
+    dump_json(path, state)
+    logger.debug(f"save_user_state for {state.get('user_id')}")
 
 
 def update_state_with_turn(state: UserState, turn: "TurnResult") -> UserState:
     """根据对话结果更新语法统计信息。"""
 
-    grammar_stats = state.setdefault("grammar_stats", {})
+    grammar_stats: Dict[str, GrammarStats] = state.setdefault("grammar_stats", {})
 
     for grammar in turn.get("grammar_ai", []):
         name = grammar.get("name", "").strip()
@@ -81,9 +65,6 @@ def update_state_with_turn(state: UserState, turn: "TurnResult") -> UserState:
 
     state["grammar_stats"] = grammar_stats
     return state
-
-
-# --- 等级决策 ---
 
 
 _LEVEL_ORDER = ["N5", "N4", "N3", "N2", "N1"]
