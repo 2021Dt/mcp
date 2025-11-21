@@ -1,18 +1,9 @@
 """硬编码的日语语法点规则库，供语法引擎进行快速匹配。"""
 
-from typing import List, TypedDict
+from typing import List
 
 
-class GrammarPattern(TypedDict):
-    """描述单个语法模式的关键要素。"""
-
-    name: str
-    pattern: List[str]
-    description: str
-    example: str
-
-
-GRAMMAR_PATTERNS: List[GrammarPattern] = [
+GRAMMAR_PATTERNS: List[dict] = [
     {
         "name": "～うちに",
         "pattern": ["うちに"],

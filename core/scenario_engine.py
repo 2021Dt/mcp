@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from core.conversation_engine import process_user_utterance
-from core.scenario_models import SAMPLE_SCENARIOS, Scenario, ScenarioTurn
+from core.models import Scenario, ScenarioTurn
+from core.scenario_models import SAMPLE_SCENARIOS
 
 
 def get_scenario(scenario_id: str) -> Optional[Scenario]:

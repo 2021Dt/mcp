@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import List, TYPE_CHECKING
+from typing import List
 
-from core.grammar_rules import GRAMMAR_PATTERNS, GrammarPattern
-
-if TYPE_CHECKING:  # 避免运行时循环依赖
-    from core.conversation_engine import GrammarPoint
-else:
-    GrammarPoint = dict
+from core.grammar_rules import GRAMMAR_PATTERNS
+from core.models import GrammarPoint
 
 
 def detect_grammar(jp_text: str) -> List[GrammarPoint]:

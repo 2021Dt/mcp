@@ -1,25 +1,8 @@
 """定义场景脚本的数据结构与示例场景。"""
 
-from typing import List, TypedDict
+from typing import List
 
-
-class ScenarioTurn(TypedDict):
-    """表示场景脚本中的单条台词。"""
-
-    role: str  # "npc" | "system"
-    jp: str
-    zh: str
-
-
-class Scenario(TypedDict):
-    """表示完整的场景脚本。"""
-
-    id: str
-    title: str
-    description: str
-    level: str
-    related_lessons: List[str]
-    script: List[ScenarioTurn]
+from core.models import Scenario, ScenarioTurn
 
 
 SAMPLE_SCENARIOS: List[Scenario] = [

@@ -2,7 +2,8 @@
 
 from typing import Any, Dict, Optional
 
-from core.lesson_models import GrammarItem, Lesson, SAMPLE_LESSONS, VocabItem
+from core.lesson_models import SAMPLE_LESSONS
+from core.models import GrammarItem, Lesson, VocabItem
 
 
 def get_lesson(lesson_id: str) -> Optional[Lesson]:

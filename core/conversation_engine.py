@@ -2,42 +2,17 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, TypedDict
+from typing import List, Optional
 
 from core.llm_client import call_llm
 from core.grammar_engine import detect_grammar
+from core.models import GrammarPoint, TurnResult, UserCorrection
 from core.user_state import (
     apply_level_update,
     load_user_state,
     save_user_state,
     update_state_with_turn,
 )
-
-
-class GrammarPoint(TypedDict):
-    """表示 AI 回复中涉及的语法点结构。"""
-
-    name: str
-    description: str
-    example: str
-
-
-class UserCorrection(TypedDict):
-    """记录对用户发言的纠错信息。"""
-
-    original: str
-    corrected: str
-    explain: str
-
-
-class TurnResult(TypedDict):
-    """封装单轮对话的最终输出。"""
-
-    jp: str
-    zh: str
-    user_correction: Optional[UserCorrection]
-    grammar_ai: List[GrammarPoint]
-    level: Optional[str]
 
 
 async def process_user_utterance(

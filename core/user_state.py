@@ -4,27 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
-from typing import Dict, TYPE_CHECKING, TypedDict
+from typing import Dict
 
-if TYPE_CHECKING:  # 避免运行时循环导入，仅用于类型检查
-    from core.conversation_engine import TurnResult
-
-# --- 数据结构 ---
-
-
-class GrammarStats(TypedDict):
-    """记录单个语法点的学习数据。"""
-
-    seen: int
-    wrong: int
-
-
-class UserState(TypedDict):
-    """整体的用户学习状态。"""
-
-    user_id: str
-    level: str
-    grammar_stats: Dict[str, GrammarStats]
+from core.models import GrammarStats, TurnResult, UserState
 
 
 # --- 配置 ---

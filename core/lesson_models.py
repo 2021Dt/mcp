@@ -1,35 +1,8 @@
 """课程（Lesson）相关的数据结构与样例数据。"""
 
-from typing import List, TypedDict
+from typing import List
 
-
-class VocabItem(TypedDict):
-    """词汇项，包含日语、读音、中文释义与示例。"""
-
-    jp: str
-    reading: str
-    zh: str
-    example: str
-
-
-class GrammarItem(TypedDict):
-    """语法项，包含名称、结构、解释、示例与等级。"""
-
-    name: str
-    pattern: str
-    explanation: str
-    examples: List[str]
-    level: str  # N5~N1
-
-
-class Lesson(TypedDict):
-    """课程定义，聚合词汇与语法。"""
-
-    id: str
-    title: str
-    level: str
-    vocab: List[VocabItem]
-    grammar: List[GrammarItem]
+from core.models import GrammarItem, Lesson, VocabItem
 
 
 SAMPLE_LESSONS: List[Lesson] = [
