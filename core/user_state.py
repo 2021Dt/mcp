@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
-from typing import Dict, TypedDict
+from typing import Dict, TYPE_CHECKING, TypedDict
 
-from core.conversation_engine import TurnResult
+if TYPE_CHECKING:  # 避免运行时循环导入，仅用于类型检查
+    from core.conversation_engine import TurnResult
 
 # --- 数据结构 ---
 
@@ -82,7 +83,7 @@ def save_user_state(state: UserState) -> None:
 # --- 状态更新逻辑 ---
 
 
-def update_state_with_turn(state: UserState, turn: TurnResult) -> UserState:
+def update_state_with_turn(state: UserState, turn: "TurnResult") -> UserState:
     """根据对话结果更新语法统计信息。"""
 
     grammar_stats = state.setdefault("grammar_stats", {})
