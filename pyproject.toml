@@ -1,0 +1,15 @@
+[project]
+name = "ai"
+version = "0.1.0"
+description = "AI 陪练bot"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastmcp>=2.13.1",
+    "loguru>=0.7.3",
+    "ollama>=0.6.1",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
