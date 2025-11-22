@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
+import json
 
 from fastmcp import Client
+from fastmcp.client.client import CallToolResult
 
 from core.services.agent_runner import AgentRunner
 from core.services.ai_client import AIClient
@@ -35,7 +37,7 @@ async def call_tool(name: str, args: Dict[str, Any]) -> Any:
 def call_tool_sync(name: str, args: Dict[str, Any]) -> Any:
     """同步封装，便于在 REPL 中直接调用工具。"""
 
-    return asyncio.run(call_tool(name, args))
+    return extract_state_dict(asyncio.run(call_tool(name, args)))
 
 
 @dataclass
@@ -70,7 +72,7 @@ def print_help() -> None:
     print("  /exit                          退出 REPL")
     print("  /user <user_id>                切换当前用户 ID")
     print("  /state                         查看当前用户状态")
-    print("  /state reset                   重置当前用户状态")
+    print("  /state reset                   重置当前用户状态")  # 这里可以搞成可选参数。
     print("  /lesson <lesson_id>            查看课程概览")
     print("  /lesson-step <lesson_id> <i>   查看课程某一步")
     print("  /scenario <scene_id> <i>       查看场景某一步台词")
@@ -97,12 +99,43 @@ def format_grammar_stats(grammar_stats: Dict[str, Dict[str, int]]) -> str:
     return "\n".join(lines)
 
 
-def print_user_state(state: Dict[str, Any]) -> None:
-    """人类可读输出用户状态。"""
+def extract_state_dict(state: Any) -> Dict[str, Any]:
+    """
+    将输入转成 dict。
+    自动判断是普通 dict 还是 MCP CallToolResult。
+    """
+
+    # ① 如果本来就是 dict，直接返回
+    if isinstance(state, dict):
+        return state
+
+    # ② 如果是 CallToolResult：从 content 中解析 JSON 文本
+    if isinstance(state, CallToolResult):
+        if not state.content:
+            raise ValueError("CallToolResult.content 为空，无法解析用户状态")
+
+        content_item = state.content[0]
+
+        # content_item 必须是 TextContent
+        text = getattr(content_item, "text", None)
+        if not text:
+            raise ValueError("CallToolResult.content 第0项没有 text 字段")
+
+        try:
+            return json.loads(text)
+        except Exception as e:
+            raise ValueError(f"无法解析 JSON：{e}")
+
+    raise TypeError(f"无法处理的 state 类型: {type(state)}")
+
+
+def print_user_state(state: dict) -> None:
+    """人类可读输出用户状态（兼容 dict / CallToolResult）"""
 
     user_id = state.get("user_id", "?")
     level = state.get("level", "?")
     grammar_stats = state.get("grammar_stats", {})
+
     print(f"用户: {user_id}")
     print(f"当前等级: {level}")
     print("语法统计 Top 5:")
@@ -128,7 +161,7 @@ def handle_command(line: str, session: Session) -> bool:
                 print("[用法] /user <user_id>")
             else:
                 session.set_user(parts[1])
-                print(f"已切换当前用户为: {session.current_user_id}")
+                print(f"已切换当前用户为: {session.current_user_id}")  # 这里后面做权限管理
         elif cmd == "/state":
             if len(parts) >= 2 and parts[1].lower() == "reset":
                 state = call_tool_sync(
@@ -148,13 +181,16 @@ def handle_command(line: str, session: Session) -> bool:
                 overview = call_tool_sync(
                     "get_lesson_overview", {"lesson_id": parts[1]}
                 )
-                print("课程概览：")
-                print(
-                    f"- 标题: {overview.get('title')} (ID: {overview.get('id')}, 等级: {overview.get('level')})"
-                )
-                print(
-                    f"- 词汇数: {overview.get('vocab_count')} / 语法点数: {overview.get('grammar_count')}"
-                )
+                if overview:
+                    print("课程概览：")
+                    print(
+                        f"- 标题: {overview.get('title')} (ID: {overview.get('id')}, 等级: {overview.get('level')})"
+                    )
+                    print(
+                        f"- 词汇数: {overview.get('vocab_count')} / 语法点数: {overview.get('grammar_count')}"
+                    )
+                else:
+                    print(f'当前无课程lesson {parts[1]} 的相关信息，请检查课程信息是否注册。')
         elif cmd == "/lesson-step":
             if len(parts) < 3:
                 print("[用法] /lesson-step <lesson_id> <step_index>")
@@ -184,10 +220,13 @@ def handle_command(line: str, session: Session) -> bool:
                     "scenario_get_step",
                     {"scenario_id": parts[1], "step_index": step_index},
                 )
-                print(f"场景步骤 {step.get('index')} / {step.get('total')}：")
-                print(f"- 角色: {step.get('role')}")
-                print(f"- 日语: {step.get('jp')}")
-                print(f"- 中文: {step.get('zh')}")
+                if step:
+                    print(f"场景步骤 {step.get('index')} / {step.get('total')}：")
+                    print(f"- 角色: {step.get('role')}")
+                    print(f"- 日语: {step.get('jp')}")
+                    print(f"- 中文: {step.get('zh')}")
+                else:
+                    print(f'当前无场景步骤 {parts[1]} 的相关信息，请检查相关场景是否注册。')
         elif cmd == "/scenario-reply":
             if len(parts) < 4:
                 print("[用法] /scenario-reply <scenario_id> <step_index> <日文回复>")
