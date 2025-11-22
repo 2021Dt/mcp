@@ -15,7 +15,7 @@ def get_user_state(user_id: str) -> dict:
 def reset_user_state(user_id: str) -> dict:
     """重置指定用户的学习状态。"""
 
-    state = load_user_state(user_id)
+    state = load_user_state(user_id)  # 读取文件加载用户信息
     state["grammar_stats"] = {}
     state["level"] = "N5"
     save_user_state(state)
